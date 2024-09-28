@@ -6,12 +6,67 @@ if (!AbortSignal.timeout) {
     };
 }
 
+function avg (arr) {
+    let sum = 0;
+    arr.forEach((k) => { sum += k; })
+    return sum / arr.length;
+}
+
+function shuffle(array) {
+    for (let i = array.length - 1; i >= 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+function randArr(start, end, length) {
+    return shuffle(range(start, end)).slice(0, length);
+}
+
 function range(start, end) {
     return Array.from({ length: end - start }, (v, i) => i + start);
 }
 
 function sleep(ms) {
     return new Promise((r) => setTimeout(r, ms));
+}
+
+async function portTime(port) {
+    const st = performance.now();
+    try {
+        await fetch(
+            "http://127.0.0.1:" + port,
+            { signal: AbortSignal.timeout(3000) }
+        );
+    } catch (error) {}
+    const et = performance.now();
+    return et - st;
+}
+
+async function guessOpenProxyPort() {
+    const promList = [];
+    const randTime = [];
+    const msThresh = 300;
+
+    randArr(41000, 49000, 8).forEach((port) => {
+        promList.push(portTime(port));
+    });
+    const prom7890 = portTime(7890);
+    const prom7897 = portTime(7897);
+
+    for (const prom of promList) {
+        randTime.push(await prom);
+    }
+    closedAvg = avg(randTime);
+
+    if (Math.abs(await prom7890 - closedAvg) > msThresh) {
+        return 7890;
+    }
+    if (Math.abs(await prom7897 - closedAvg) > msThresh) {
+        return 7897;
+    }
+    return 0;
 }
 
 async function guessClashVersion(port) {
@@ -121,9 +176,10 @@ async function getClashProxies(port) {
     }
 }
 
-function scanLocalhost(workerNum) {
+async function scanLocalhost(workerNum) {
     window.scanning = true;
 
+    let proxyPort = 0;
     let workerDone = 0;
     let scannedPorts = 0;
     let foundPort = 0;
@@ -178,17 +234,23 @@ function scanLocalhost(workerNum) {
         document.querySelector("#div_servers").style.display = "none";        
 
         while (!foundPort && workerDone !== workerNum) {
+            let preInfo = "";
+            if (proxyPort === 7890) {
+                preInfo = "TCP/7890 开放 (Clash?) | ";
+            } else if (proxyPort === 7897) {
+                preInfo = "TCP/7897 开放 (Clash Verge?) | ";
+            }
             if (scannedPorts < commonPortLength) {
                 percentage = Math.round(100 * scannedPorts / commonPortLength);
                 document.querySelector("#title").innerText =
-                    "扫描中... " + percentage + "%";
+                    preInfo + "扫描中... " + percentage + "%";
                 document.querySelector(".progress-done").style.width = percentage + "%";
             } else {
                 percentage = Math.round(
                     100 * (scannedPorts - commonPortLength) / ports.length
                 );
                 document.querySelector("#title").innerText =
-                    "扩展扫描中... " + percentage + "%";
+                    preInfo + "扩展扫描中... " + percentage + "%";
                 document.querySelector(".progress-done").style.width = percentage + "%";
             }
             await sleep(500);
@@ -212,11 +274,16 @@ function scanLocalhost(workerNum) {
                     JSON.stringify(proxies, null, 4);
                 document.querySelector("#div_servers").style.display = "inherit";
             }
-        } else {
+        } else if (proxyPort) {
+            document.querySelector("#title").innerText = preInfo + "扫描完毕";
+        }
+        else {
             document.querySelector("#title").innerText = "未发现 Clash";
         }
     }
+    
     updateInfoWorker();
+    proxyPort = await guessOpenProxyPort();
     let wn;
     for (wn = 0; wn < workerNum; wn++) {
         scanLocalhostWorker(wn);

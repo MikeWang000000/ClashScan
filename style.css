@@ -16,7 +16,7 @@ body {
 }
 
 .wrapper {
-    width: 740px;
+    width: 800px;
     margin: 0 auto;
     background: #DEDEDE;
     border-radius: 8px;
@@ -315,7 +315,7 @@ footer p+p {
 }
 
 @media print,
-screen and (max-width: 740px) {
+screen and (max-width: 800px) {
     body {
         padding: 0
     }
