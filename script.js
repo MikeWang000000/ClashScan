@@ -90,7 +90,9 @@ async function getClashTraffic(port) {
         );
         const dat = await response.json();
         if (Array.isArray(dat.connections)) {
-            dat.connections.forEach((conn) => hostlist.push(conn.metadata.host));
+            dat.connections.forEach((conn) => hostlist.push(
+                conn.metadata.host ? conn.metadata.host : conn.metadata.destinationIP
+            ));
             return hostlist;
         }
         return null;
