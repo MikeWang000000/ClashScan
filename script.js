@@ -90,9 +90,14 @@ async function getClashTraffic(port) {
         );
         const dat = await response.json();
         if (Array.isArray(dat.connections)) {
-            dat.connections.forEach((conn) => hostlist.push(
-                conn.metadata.host ? conn.metadata.host : conn.metadata.destinationIP
-            ));
+            dat.connections.forEach((conn) => {
+                let addr = conn.metadata.host ? conn.metadata.host : conn.metadata.destinationIP;
+                let port = parseInt(conn.metadata.destinationPort, 10);
+                if (port !== 80 && port !== 443) {
+                    addr += (":" + port);
+                }
+                hostlist.push(addr);
+            });
             return hostlist;
         }
         return null;
