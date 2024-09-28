@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <title>在线 Clash 检测</title>
+    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+    <div class="wrapper">
+        <header>
+            <h1 id="title">您是否在使用 Clash？</h1>
+            <p>任何网站都能检测您是否正在使用 Clash。</p>
+            <ul>
+                <li style="width:120px"><a href="javascript:startScan()">Start Scan <strong>开始检测</strong></a></li>
+                <li><a href="https://github.com/MikeWang000000/ClashScan">View On <strong>GitHub</strong></a></li>
+            </ul>
+        </header>
+        <div class="progress"><div class="progress-done"></div></div>
+        <section>
+            <h2>使用说明</h2>
+            <ul>
+                <li>推荐使用 Chrome ⩾ 103 版本（2022）；</li>
+                <li>点击 “开始检测”，您将同意本网页进行端口扫描；</li>
+                <li>您本次的检测结果不会被上传至云端；</li>
+                <li>检测结果仅供参考。</li>
+            </ul>
+
+            <hr />
+
+            <h2>检测结果</h2>
+            <div id="div_version">
+                <h3>Clash 版本：</h3>
+                <p id="txt_version">
+                    暂无数据
+                </p>
+            </div>
+
+            <div id="div_hosts" style="display: none">
+                <h3>您正在浏览：</h3>
+                <blockquote>
+                    <p id="txt_hosts">
+                        bilibili.com<br />
+                        bilibili.com<br />
+                        bilibili.com<br />
+                    </p>
+                </blockquote>
+            </div>
+
+            <div id="div_servers" style="display: none">
+                <h3>您的服务器：</h3>
+                <pre class=""><code id="txt_servers"></code></pre>
+            </div>
+
+            <hr />
+        </section>
+    </div>
+    <footer>
+        <p>Project maintained by <a href="https://github.com/MikeWang000000">MikeWang000000</a></p>
+        <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
+    </footer>
+    <script src="script.js"></script>
+</body>
+
+</html>
