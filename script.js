@@ -171,6 +171,12 @@ function scanLocalhost(workerNum) {
         const commonPortLength = 3200;
         let percentage = 0;
 
+        document.querySelector("#txt_version").innerText = "暂无数据";
+        document.querySelector("#txt_hosts").innerHTML = "";
+        document.querySelector("#div_hosts").style.display = "none";
+        document.querySelector("#txt_servers").innerHTML = "";
+        document.querySelector("#div_servers").style.display = "none";        
+
         while (!foundPort && workerDone !== workerNum) {
             if (scannedPorts < commonPortLength) {
                 percentage = Math.round(100 * scannedPorts / commonPortLength);
