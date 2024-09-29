@@ -1,3 +1,15 @@
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then(registration => {
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }, error => {
+          console.log('ServiceWorker registration failed: ', error);
+        });
+    });
+  }
+
+
 if (!AbortSignal.timeout) {
     AbortSignal.timeout = function (ms) {
         const controller = new AbortController();
@@ -175,10 +187,8 @@ async function getClashProxies(port) {
         return null;
     }
 }
-
 async function scanLocalhost(workerNum) {
     window.scanning = true;
-
     let proxyPort = 0;
     let workerDone = 0;
     let totalScannedPorts = 0;
@@ -292,6 +302,9 @@ async function scanLocalhost(workerNum) {
         workers.push(worker);
         assignPortToWorker(worker);
     }
+
+    // 确保在窗口关闭或刷新时终止所有 Web Worker
+    window.addEventListener('beforeunload', terminateAllWorkers);
 }
 
 function startScan() {
@@ -301,6 +314,6 @@ function startScan() {
     if (window.scanning) {
         alert("正在扫描中。");
     } else {
-        scanLocalhost(128);
+        scanLocalhost(64);
     }
 }
