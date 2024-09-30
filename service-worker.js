@@ -1,12 +1,12 @@
 const CACHE_NAME = 'clash-scan-cache-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/script.js',
-  '/scannerWorker.js',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/ClashScan/',
+  '/ClashScan/index.html',
+  '/ClashScan/styles.css',
+  '/ClashScan/script.js',
+  '/ClashScan/scannerWorker.js',
+  '/ClashScan/icons/icon-192x192.png',
+  '/ClashScan/icons/icon-512x512.png'
 ];
 
 self.addEventListener('install', event => {
