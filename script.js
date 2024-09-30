@@ -187,6 +187,7 @@ async function getClashProxies(port) {
         return null;
     }
 }
+
 async function scanLocalhost(workerNum) {
     window.scanning = true;
     let proxyPort = 0;
@@ -272,14 +273,7 @@ async function scanLocalhost(workerNum) {
         }
     }
 
-    function assignPortToWorker(worker) {
-        if (currentPortIndex < ports.length) {
-            worker.postMessage({ port: ports[currentPortIndex], timeout: 120 });
-            currentPortIndex++;
-        } else {
-            workerDone++;
-        }
-    }
+
 
     function terminateAllWorkers() {
         workers.forEach(worker => worker.terminate());
@@ -288,6 +282,12 @@ async function scanLocalhost(workerNum) {
     updateInfoWorker();
     proxyPort = await guessOpenProxyPort();
 
+    const portChunks = Array.from({ length: workerNum }, () => []);
+    
+    for (let i = 0; i < ports.length; i++) {
+        portChunks[i % workerNum].push(ports[i]);
+    }
+    
     for (let wn = 0; wn < workerNum; wn++) {
         const worker = new Worker('scannerWorker.js');
         worker.onmessage = function (e) {
@@ -297,10 +297,16 @@ async function scanLocalhost(workerNum) {
                 terminateAllWorkers();
             }
             totalScannedPorts++;
-            assignPortToWorker(worker);
+            if (portChunks[wn].length > 0) {
+                worker.postMessage({ port: portChunks[wn].shift(), timeout: 120 });
+            } else {
+                workerDone++;
+            }
         };
         workers.push(worker);
-        assignPortToWorker(worker);
+        if (portChunks[wn].length > 0) {
+            worker.postMessage({ port: portChunks[wn].shift(), timeout: 120 });
+        }
     }
 
     // 确保在窗口关闭或刷新时终止所有 Web Worker
@@ -314,6 +320,6 @@ function startScan() {
     if (window.scanning) {
         alert("正在扫描中。");
     } else {
-        scanLocalhost(64);
+        scanLocalhost(128);
     }
 }
