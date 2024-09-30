@@ -1,3 +1,15 @@
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(registration => {
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }, error => {
+          console.log('ServiceWorker registration failed: ', error);
+        });
+    });
+  }
+
+
 if (!AbortSignal.timeout) {
     AbortSignal.timeout = function (ms) {
         const controller = new AbortController();
@@ -178,10 +190,9 @@ async function getClashProxies(port) {
 
 async function scanLocalhost(workerNum) {
     window.scanning = true;
-
     let proxyPort = 0;
     let workerDone = 0;
-    let scannedPorts = 0;
+    let totalScannedPorts = 0;
     let foundPort = 0;
 
     const ports = [9090]
@@ -190,42 +201,40 @@ async function scanLocalhost(workerNum) {
         .concat(range(10000, 65536))
         .concat(range(1, 2000).reverse());
 
-    async function checkIsClash(port) {
-        try {
-            const response = await fetch(
-                "http://127.0.0.1:" + port,
-                { method: "GET", signal: AbortSignal.timeout(120) }
-            );
-            const dat = await response.json();
-            if (Object.keys(dat).length === 1 && dat.message === "Unauthorized") {
-                return true;
-            }
-            if (Object.keys(dat).length === 1 && dat.hello) {
-                return true;
-            }
-            return false;
-        } catch (error) {
-            return false;
-        }
-    }
+    const workers = [];
+    const commonPortLength = 3200;
+    let percentage = 0;
+    let currentPortIndex = 0;
 
-    async function scanLocalhostWorker(n) {
-        let i;
-        for (i = n; i < ports.length && !foundPort; i += workerNum) {
-            let win = await checkIsClash(ports[i]);
-            await sleep(5);
-            scannedPorts++;
-            if (win) {
-                foundPort = ports[i];
-                break;
-            }
+    function updateProgress() {
+        let preInfo = "";
+        if (proxyPort === 7890) {
+            preInfo = "TCP/7890 开放 (Clash?) | ";
+        } else if (proxyPort === 7897) {
+            preInfo = "TCP/7897 开放 (Clash Verge?) | ";
         }
-        workerDone++;
+        if (totalScannedPorts < commonPortLength) {
+            percentage = Math.round(100 * totalScannedPorts / commonPortLength);
+            document.querySelector("#title").innerText =
+                preInfo + "扫描中... " + percentage + "%";
+            document.querySelector(".progress-done").style.width = percentage + "%";
+        } else {
+            percentage = Math.round(
+                100 * (totalScannedPorts - commonPortLength) / ports.length
+            );
+            document.querySelector("#title").innerText =
+                preInfo + "扩展扫描中... " + percentage + "%";
+            document.querySelector(".progress-done").style.width = percentage + "%";
+        }
     }
 
     async function updateInfoWorker() {
-        const commonPortLength = 3200;
-        let percentage = 0;
+        let preInfo = "";
+        if (proxyPort === 7890) {
+            preInfo = "TCP/7890 开放 (Clash?) | ";
+        } else if (proxyPort === 7897) {
+            preInfo = "TCP/7897 开放 (Clash Verge?) | ";
+        }
 
         document.querySelector("#txt_version").innerText = "暂无数据";
         document.querySelector("#txt_hosts").innerHTML = "";
@@ -234,25 +243,7 @@ async function scanLocalhost(workerNum) {
         document.querySelector("#div_servers").style.display = "none";        
 
         while (!foundPort && workerDone !== workerNum) {
-            let preInfo = "";
-            if (proxyPort === 7890) {
-                preInfo = "TCP/7890 开放 (Clash?) | ";
-            } else if (proxyPort === 7897) {
-                preInfo = "TCP/7897 开放 (Clash Verge?) | ";
-            }
-            if (scannedPorts < commonPortLength) {
-                percentage = Math.round(100 * scannedPorts / commonPortLength);
-                document.querySelector("#title").innerText =
-                    preInfo + "扫描中... " + percentage + "%";
-                document.querySelector(".progress-done").style.width = percentage + "%";
-            } else {
-                percentage = Math.round(
-                    100 * (scannedPorts - commonPortLength) / ports.length
-                );
-                document.querySelector("#title").innerText =
-                    preInfo + "扩展扫描中... " + percentage + "%";
-                document.querySelector(".progress-done").style.width = percentage + "%";
-            }
+            updateProgress();
             await sleep(500);
         }
         window.scanning = false;
@@ -281,13 +272,45 @@ async function scanLocalhost(workerNum) {
             document.querySelector("#title").innerText = "未发现 Clash";
         }
     }
-    
+
+
+
+    function terminateAllWorkers() {
+        workers.forEach(worker => worker.terminate());
+    }
+
     updateInfoWorker();
     proxyPort = await guessOpenProxyPort();
-    let wn;
-    for (wn = 0; wn < workerNum; wn++) {
-        scanLocalhostWorker(wn);
+
+    const portChunks = Array.from({ length: workerNum }, () => []);
+    
+    for (let i = 0; i < ports.length; i++) {
+        portChunks[i % workerNum].push(ports[i]);
     }
+    
+    for (let wn = 0; wn < workerNum; wn++) {
+        const worker = new Worker('scannerWorker.js');
+        worker.onmessage = function (e) {
+            const { foundPort: port } = e.data;
+            if (port) {
+                foundPort = port;
+                terminateAllWorkers();
+            }
+            totalScannedPorts++;
+            if (portChunks[wn].length > 0) {
+                worker.postMessage({ port: portChunks[wn].shift(), timeout: 120 });
+            } else {
+                workerDone++;
+            }
+        };
+        workers.push(worker);
+        if (portChunks[wn].length > 0) {
+            worker.postMessage({ port: portChunks[wn].shift(), timeout: 120 });
+        }
+    }
+
+    // 确保在窗口关闭或刷新时终止所有 Web Worker
+    window.addEventListener('beforeunload', terminateAllWorkers);
 }
 
 function startScan() {
@@ -297,6 +320,6 @@ function startScan() {
     if (window.scanning) {
         alert("正在扫描中。");
     } else {
-        scanLocalhost(20);
+        scanLocalhost(128);
     }
 }
